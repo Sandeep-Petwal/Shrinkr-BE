@@ -51,7 +51,7 @@ const createShortUrlLoggedIn = async (req, res) => {
 
         const { customUrlText } = req.body;
         const { originalUrl } = validation.value;
-        const { userId } = req.user;
+        const { _id: userId } = req.user;
 
         const data = await createShortUrl(originalUrl, customUrlText, userId);
         response.success(res, data, 201, "Successfully created.");
@@ -78,9 +78,14 @@ const createShortUrlFree = async (req, res) => {
 
 // Delete short URL (only logged-in user who created it)
 const deleteShortUrl = async (req, res) => {
-    const { shortUrl } = req.params;
-    const { userId } = req.user;
-    const urlData = await Url.findOne({ shortUrl });
+    const { shortUrl } = req.body;
+    console.log('shortUrl', shortUrl)
+    if (!shortUrl || !validator.isURL(shortUrl, { protocols: ["http", "https"], require_protocol: true, require_tld: false })) {
+        return response.failled(res, 400, "Invalid shorturl.");
+    }
+
+    const { _id: userId } = req.user;
+    const urlData = await Url.findOne({ shortUrl, userId });
 
     if (!urlData) {
         return response.failled(res, 404, "Short URL not found.");
@@ -96,11 +101,12 @@ const deleteShortUrl = async (req, res) => {
 
 // Get original URL and track analytics
 const getOriginalUrl = async (req, res) => {
-    const { shortUrl } = req.params;
-    if (!shortUrl) {
-        return response.failled(res, 404, "Short URL is required.");
+    const { short_text } = req.params;
+    if (!short_text) {
+        return response.failled(res, 400, "Short text is required.");
     }
 
+    const shortUrl = `${BASE_SHORT_URL}/${short_text}`;
     const urlData = await Url.findOne({ shortUrl });
 
     if (!urlData) {
@@ -130,8 +136,12 @@ const getOriginalUrl = async (req, res) => {
 
 // Get analytics for a specific URL (logged-in user only)
 const getUrlAnalytics = async (req, res) => {
-    const { shortUrl } = req.params;
-    const { userId } = req.user;
+    const { short_text } = req.params;
+    if (!short_text) {
+        return response.failled(res, 400, "Short text is required.");
+    }
+
+    const shortUrl = `${BASE_SHORT_URL}/${short_text}`;
 
     const urlData = await Url.findOne({ shortUrl });
 
@@ -139,11 +149,12 @@ const getUrlAnalytics = async (req, res) => {
         return response.failled(res, 404, "Short URL not found.");
     }
 
+    const {_id : userId} = req.user;        
     if (urlData.userId.toString() !== userId.toString()) {
         return response.failled(res, 403, "You are not authorized to view analytics for this URL.");
     }
 
-    const analyticsData = await Analytics.findById(urlData._id);
+    const analyticsData = await Analytics.find({urlId : urlData._id});
 
     response.success(res, analyticsData, 200, "Analytics retrieved successfully.");
 };
