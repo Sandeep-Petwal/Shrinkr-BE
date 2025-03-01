@@ -1,4 +1,5 @@
 const User = require("../models/users.model.js")
+const jwt = require("jsonwebtoken");
 
 // Middleware to protect routes
 const auth = async (req, res, next) => {
@@ -33,6 +34,7 @@ const auth = async (req, res, next) => {
         req.user = user;
         next();
     } catch (error) {
+        console.log('error :: ', error)
         return res.status(401).json({
             success: false,
             message: 'Not authorized to access this route'

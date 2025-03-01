@@ -1,7 +1,7 @@
 const Joi = require("joi");
 
 
-// Validation Schemas
+// User Validation Schemas
 exports.signupSchema = Joi.object({
     email: Joi.string().email().required(),
     name: Joi.string().required(),
@@ -18,6 +18,9 @@ exports.verifySchema = Joi.object({
     otp: Joi.string().length(6).required(),
 });
 
+
+// Url Validation schema
 exports.urlValidationSchema = Joi.object({
     originalUrl: Joi.string().required().uri()
 });
+
