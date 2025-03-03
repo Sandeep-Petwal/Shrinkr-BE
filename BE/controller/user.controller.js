@@ -3,7 +3,8 @@ const nodemailer = require("../utils/nodeMailer.js");
 const User = require("../models/users.model.js");
 const { signupSchema, loginSchema, verifySchema } = require("../utils/joiSchema.js");
 const validateRequest = require("../utils/validate.js");
-const response = require("../utils/response.js")
+const response = require("../utils/response.js");
+const Url = require("../models/url.model.js");
 
 
 
@@ -53,6 +54,13 @@ const login = async (req, res) => {
 
     sendTokenResponse(user, 200, res);
 };
+
+// Controller : Logout
+const logout = async (req, res) => {
+    // clear the cookies
+    res.cookie('url_auth', '', { expires: new Date(0), httpOnly: true }); // Set cookie to empty value with expired date
+    response.success(res, {}, 201, "Successfully Logged out.")
+}
 
 // Controller: Signup
 const signup = async (req, res) => {
@@ -105,4 +113,34 @@ const verifySignup = async (req, res) => {
     response.success(res, [], 200, "Your account verified successfully.")
 };
 
-module.exports = { signup, login, verifySignup };
+
+// controller to get the list of  users total shorten url's
+const getMyUrls = async (req, res) => {
+    const { page = 1, limit = 10 } = req.query;
+    const { _id: userId } = req.user;
+
+    const total = await Url.countDocuments({ userId });
+
+    if (!total) {
+        return response.success(res, [], 200, "No url found.");
+    }
+
+    const skip = (page - 1) * limit;
+
+    try {
+        const urls = await Url.find({ userId }).skip(skip).limit(parseInt(limit));
+        res.status(200).json({
+            success: true,
+            total,
+            page,
+            limit,
+            totalPage : parseInt(Math.ceil(total/limit)),
+            data :  urls
+        })
+    } catch (error) {
+        console.error("Error fetching URLs:", error);
+        return response.error(res, "Failed to fetch URLs.", 500);
+    }
+};
+
+module.exports = { signup, login, verifySignup, getMyUrls, logout };

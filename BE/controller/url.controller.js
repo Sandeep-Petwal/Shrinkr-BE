@@ -24,7 +24,7 @@ const createShortUrl = async (originalUrl, customUrlText, userId) => {
     let shortUrl = null;
 
     if (customUrlText) {
-        if (customUrlText.length !== shortUrlLength) {
+        if (customUrlText.length != shortUrlLength) {
             throw new Error(`Custom URL length must be ${shortUrlLength}!`);
         }
         if (await isUrlAlreadyExists(customUrlText)) {
@@ -46,11 +46,10 @@ const createShortUrl = async (originalUrl, customUrlText, userId) => {
 // Create short URL for logged-in users
 const createShortUrlLoggedIn = async (req, res) => {
     try {
-        const validation = validateRequest(urlValidationSchema, req);
-        if (!validation.success) return response.failled(res, 400, validation.message);
+
 
         const { customUrlText } = req.body;
-        const { originalUrl } = validation.value;
+        const { originalUrl } = req.body
         const { _id: userId } = req.user;
 
         const data = await createShortUrl(originalUrl, customUrlText, userId);
@@ -63,11 +62,8 @@ const createShortUrlLoggedIn = async (req, res) => {
 // Create short URL for free users
 const createShortUrlFree = async (req, res) => {
     try {
-        const validation = validateRequest(urlValidationSchema, req);
-        if (!validation.success) return response.failled(res, 400, validation.message);
-
         const { customUrlText } = req.body;
-        const { originalUrl } = validation.value;
+        const { originalUrl } = req.body
 
         const data = await createShortUrl(originalUrl, customUrlText);
         response.success(res, data, 201, "Successfully created.");
