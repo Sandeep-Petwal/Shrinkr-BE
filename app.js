@@ -9,7 +9,7 @@ const { globalLimiter } = require("./utils/limiter.js")
 // middleware
 const app = express();
 const corsOptions = {
-    origin: 'http://localhost:3000', // specify the exact origin
+    origin: process.env.BASE_SHORT_URL, // specify the exact origin
     credentials: true, // allow credentials (cookies, authorization headers)
   };
   

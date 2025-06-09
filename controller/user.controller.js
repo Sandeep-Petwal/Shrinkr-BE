@@ -48,7 +48,7 @@ const login = async (req, res) => {
 
     const { email, password } = validation.value;
     const user = await User.findOne({ email }).select("+password");
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user || !user.isVerified || !(await user.comparePassword(password))) {
         return response.failled(res, 400, "Invalid email or password")
     }
 
@@ -66,28 +66,34 @@ const logout = async (req, res) => {
 const signup = async (req, res) => {
     const validation = validateRequest(signupSchema, req);
     if (!validation.success) {
-        return response.failled(res, 400, validation.message)
+      return response.failled(res, 400, validation.message);
     }
-
+  
     const { name, email, password } = validation.value;
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-        return response.failled(res, 400, "User already exists.")
-    }
-
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const user = await User.create({ name, email, password, otp });
-
+  
+    let user = await User.findOne({ email });
+  
+    if (user?.isVerified) {
+      return response.failled(res, 400, "User already exists.");
+    }
+  
+    if (user) {
+      Object.assign(user, { name, password, otp });
+      await user.save();
+    } else {
+      user = await User.create({ name, email, password, otp });
+    }
+  
     await nodemailer.transporter.sendMail({
-        to: email,
-        subject: "Email Verification",
-        text: `Your verification code is: ${otp}`,
+      to: email,
+      subject: "Email Verification",
+      text: `Your verification code is: ${otp}`,
     });
-
-    response.success(res, { email: user.email }, 201, "Please check your email for verification code.")
-};
-
+  
+    response.success(res, { email: user.email }, 201, "Please check your email for verification code.");
+  };
+  
 
 
 
@@ -134,8 +140,8 @@ const getMyUrls = async (req, res) => {
             total,
             page,
             limit,
-            totalPage : parseInt(Math.ceil(total/limit)),
-            data :  urls
+            totalPage: parseInt(Math.ceil(total / limit)),
+            data: urls
         })
     } catch (error) {
         console.error("Error fetching URLs:", error);
