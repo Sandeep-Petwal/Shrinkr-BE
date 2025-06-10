@@ -1,10 +1,14 @@
 const jwt = require("jsonwebtoken");
 const nodemailer = require("../utils/nodeMailer.js");
+const fetch = require('node-fetch'); // For making HTTP requests to Google's API
 const User = require("../models/users.model.js");
 const { signupSchema, loginSchema, verifySchema } = require("../utils/joiSchema.js");
 const validateRequest = require("../utils/validate.js");
 const response = require("../utils/response.js");
 const Url = require("../models/url.model.js");
+
+// Your reCAPTCHA secret key (keep this secret!)
+const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SITE_SECRET;
 
 
 
@@ -45,9 +49,34 @@ const login = async (req, res) => {
     if (!validation.success) {
         return response.failled(res, 400, validation.message)
     }
+    const { email, password, recaptchaToken} = req.body;
 
-    const { email, password } = validation.value;
+
+    // 1. Check if recaptchaToken is present
+    if (!recaptchaToken) {
+        return res.status(400).json({ success: false, message: 'reCAPTCHA token is missing.' });
+    }
+
+    // 2. Verify the reCAPTCHA token with Google
+    const googleVerifyUrl = `https://www.google.com/recaptcha/api/siteverify`;
+    const response = await fetch(googleVerifyUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `secret=${RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`,
+    });
+
+    const googleResponse = await response.json();
+
+    if (!googleResponse.success) {
+        // reCAPTCHA verification failed (e.g., bot detected, invalid token)
+        return res.status(401).json({ success: false, message: 'reCAPTCHA verification failed.', 'error-codes': googleResponse['error-codes'] });
+    }
+
+
     const user = await User.findOne({ email }).select("+password");
+    console.log("user :: email ::" + email + JSON.stringify(user))
     if (!user || !user.isVerified || !(await user.comparePassword(password))) {
         return response.failled(res, 400, "Invalid email or password")
     }
@@ -66,34 +95,34 @@ const logout = async (req, res) => {
 const signup = async (req, res) => {
     const validation = validateRequest(signupSchema, req);
     if (!validation.success) {
-      return response.failled(res, 400, validation.message);
+        return response.failled(res, 400, validation.message);
     }
-  
+
     const { name, email, password } = validation.value;
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  
+
     let user = await User.findOne({ email });
-  
+
     if (user?.isVerified) {
-      return response.failled(res, 400, "User already exists.");
+        return response.failled(res, 400, "User already exists.");
     }
-  
+
     if (user) {
-      Object.assign(user, { name, password, otp });
-      await user.save();
+        Object.assign(user, { name, password, otp });
+        await user.save();
     } else {
-      user = await User.create({ name, email, password, otp });
+        user = await User.create({ name, email, password, otp });
     }
-  
+
     await nodemailer.transporter.sendMail({
-      to: email,
-      subject: "Email Verification",
-      text: `Your verification code is: ${otp}`,
+        to: email,
+        subject: "Email Verification",
+        text: `Your verification code is: ${otp}`,
     });
-  
+
     response.success(res, { email: user.email }, 201, "Please check your email for verification code.");
-  };
-  
+};
+
 
 
 
