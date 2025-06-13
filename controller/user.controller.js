@@ -70,7 +70,6 @@ const login = async (req, res) => {
     const googleResponse = await response.json();
 
     if (!googleResponse.success) {
-        // reCAPTCHA verification failed (e.g., bot detected, invalid token)
         return res.status(401).json({ success: false, message: 'reCAPTCHA verification failed.', 'error-codes': googleResponse['error-codes'] });
     }
 
