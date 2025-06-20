@@ -17,6 +17,10 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 
+app.use("/docker", (req, res) => {
+  res.json({status : "Running inside a container"})
+})
+
 // routes
 app.use("/api/v1", (req, res, next) => {
     console.log("Route :: ", req.path);
